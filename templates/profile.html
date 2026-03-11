@@ -111,11 +111,21 @@
         <div class="row g-3">
             <div class="col-md-6">
                 <label class="form-label">선호 장르</label>
-                <input type="text" name="content_genres" class="form-control" value="{{ profile.content.genres_text }}" placeholder="예: 로맨스, 판타지">
+                <select name="content_genres" class="form-select" multiple size="6">
+                    {% for genre in content_options.genres %}
+                    <option value="{{ genre }}" {% if genre in profile.content.genres %}selected{% endif %}>{{ genre }}</option>
+                    {% endfor %}
+                </select>
+                <div class="form-text">현재 추천 가능한 콘텐츠 기준으로 여러 개 선택할 수 있습니다.</div>
             </div>
             <div class="col-md-6">
-                <label class="form-label">선호 플랫폼</label>
-                <input type="text" name="content_platforms" class="form-control" value="{{ profile.content.platforms_text }}" placeholder="예: 웹툰, 유튜브, 넷플릭스">
+                <label class="form-label">선호 플랫폼 / 형식</label>
+                <select name="content_platforms" class="form-select" multiple size="3">
+                    {% for platform in content_options.platforms %}
+                    <option value="{{ platform }}" {% if platform in profile.content.platforms %}selected{% endif %}>{{ platform }}</option>
+                    {% endfor %}
+                </select>
+                <div class="form-text">웹툰은 현재 추천 범위에서 제외되어 표시하지 않습니다.</div>
             </div>
         </div>
     </div>

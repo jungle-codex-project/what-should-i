@@ -1,5 +1,6 @@
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
+from services.content_sources import get_searchable_content_options, normalize_searchable_content_preferences
 from services.personality import get_likert_options, get_mbti_types, get_survey_questions
 from services.profile_service import get_profile, update_personality_from_form, update_profile_from_form
 from utils import login_required
@@ -18,7 +19,15 @@ def profile():
         flash("프로필 취향이 저장되었습니다. 다음 추천부터 바로 반영됩니다.", "success")
 
     profile_data = get_profile(user_id)
-    return render_template("profile.html", profile=profile_data)
+    content_options = get_searchable_content_options(force_refresh=False)
+    profile_data["content"].update(
+        normalize_searchable_content_preferences(
+            genres=profile_data["content"].get("genres", []),
+            platforms=profile_data["content"].get("platforms", []),
+            options=content_options,
+        )
+    )
+    return render_template("profile.html", profile=profile_data, content_options=content_options)
 
 
 @profile_bp.route("/survey", methods=["GET", "POST"])

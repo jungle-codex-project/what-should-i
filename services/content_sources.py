@@ -12,6 +12,11 @@ from flask import current_app
 from db.mongo import get_collection
 from services.movie_images import get_tmdb_movie_poster, get_wikipedia_webtoon_image
 
+SEARCHABLE_CONTENT_PROVIDER_BLOCKLIST = {"ott", "youtube", "네이버웹툰", "카카오웹툰"}
+SEARCHABLE_CONTENT_TYPE_BLOCKLIST = {"웹툰", "영상"}
+SEARCHABLE_CONTENT_PLATFORM_BLOCKLIST = {"웹툰", "유튜브"}
+CONTENT_PLATFORM_ALIASES = {"드라마": "시리즈"}
+
 
 NETFLIX_TUDUM_SOURCES = [
     {
@@ -1055,6 +1060,87 @@ def get_content_inventory(force_refresh=False):
     tmdb_items = get_tmdb_content(force_refresh=force_refresh)
     local_items = [_decorate_content_item(item) for item in LOCAL_CONTENT_LIBRARY]
     return local_items + netflix_items + kobis_items + tmdb_items
+
+
+def is_searchable_content_item(item):
+    provider = (item.get("provider") or "").strip().lower()
+    content_type = (item.get("content_type") or "").strip().lower()
+    platforms = {
+        CONTENT_PLATFORM_ALIASES.get(platform, platform).strip().lower()
+        for platform in item.get("platforms", [])
+        if platform
+    }
+
+    if provider in SEARCHABLE_CONTENT_PROVIDER_BLOCKLIST:
+        return False
+    if content_type in SEARCHABLE_CONTENT_TYPE_BLOCKLIST:
+        return False
+    if platforms & SEARCHABLE_CONTENT_PLATFORM_BLOCKLIST:
+        return False
+    return True
+
+
+def _ranked_option_list(counts, preferred_order=None):
+    preferred_order = preferred_order or []
+    ordered = []
+    seen = set()
+
+    for label in preferred_order:
+        if label in counts:
+            ordered.append(label)
+            seen.add(label)
+
+    ranked = sorted(counts.items(), key=lambda item: (-item[1], item[0]))
+    for label, _count in ranked:
+        if label not in seen:
+            ordered.append(label)
+            seen.add(label)
+    return ordered
+
+
+def get_searchable_content_options(force_refresh=False):
+    genre_counts = {}
+    platform_counts = {}
+
+    for item in get_content_inventory(force_refresh=force_refresh):
+        if not is_searchable_content_item(item):
+            continue
+
+        for genre in item.get("genres", []):
+            if genre:
+                genre_counts[genre] = genre_counts.get(genre, 0) + 1
+
+        for platform in item.get("platforms", []):
+            normalized = CONTENT_PLATFORM_ALIASES.get(platform, platform)
+            if normalized and normalized not in {"웹툰", "유튜브"}:
+                platform_counts[normalized] = platform_counts.get(normalized, 0) + 1
+
+    return {
+        "genres": _ranked_option_list(genre_counts),
+        "platforms": _ranked_option_list(platform_counts, preferred_order=["넷플릭스", "영화", "시리즈"]),
+    }
+
+
+def _normalize_selected_values(values, options, aliases=None):
+    aliases = aliases or {}
+    allowed = set(options or [])
+    normalized_values = []
+    seen = set()
+
+    for value in values or []:
+        normalized = aliases.get(value, value)
+        if normalized in allowed and normalized not in seen:
+            normalized_values.append(normalized)
+            seen.add(normalized)
+    return normalized_values
+
+
+def normalize_searchable_content_preferences(genres=None, platforms=None, options=None, force_refresh=False):
+    options = options or get_searchable_content_options(force_refresh=force_refresh)
+    return {
+        "genres": _normalize_selected_values(genres, options["genres"]),
+        "platforms": _normalize_selected_values(platforms, options["platforms"], aliases=CONTENT_PLATFORM_ALIASES),
+    }
 
 
 def find_content_item(content_id, force_refresh=False):

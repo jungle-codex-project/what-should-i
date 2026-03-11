@@ -13,11 +13,21 @@
             <form method="post" class="vstack gap-3">
                 <div>
                     <label class="form-label">장르 취향</label>
-                    <input type="text" name="genres" class="form-control" value="{{ form_values.genres }}" placeholder="예: 판타지, 로맨스, 스릴러, 다큐">
+                    <select name="genres" class="form-select" multiple size="6">
+                        {% for genre in content_options.genres %}
+                        <option value="{{ genre }}" {% if genre in form_values.genres %}selected{% endif %}>{{ genre }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">현재 추천 가능한 작품 기준으로 여러 개 선택할 수 있습니다.</div>
                 </div>
                 <div>
-                    <label class="form-label">선호 플랫폼 / 서비스</label>
-                    <input type="text" name="platforms" class="form-control" value="{{ form_values.platforms }}" placeholder="예: 영화, 드라마, 넷플릭스">
+                    <label class="form-label">선호 플랫폼 / 형식</label>
+                    <select name="platforms" class="form-select" multiple size="3">
+                        {% for platform in content_options.platforms %}
+                        <option value="{{ platform }}" {% if platform in form_values.platforms %}selected{% endif %}>{{ platform }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">웹툰은 현재 추천 범위에 포함하지 않았습니다.</div>
                 </div>
                 <div>
                     <label class="form-label">현재 무드</label>
@@ -38,7 +48,7 @@
             <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
                 <div>
                     <span class="capsule-chip">{{ result.algorithm.name }}</span>
-                    <h2 class="h3 mt-3 mb-2">유튜브처럼 보이는 추천 엔진 레이어</h2>
+                    <h2 class="h3 mt-3 mb-2">이런 기준으로 골랐어요</h2>
                     <p class="text-muted mb-0">{{ result.algorithm.summary }}</p>
                 </div>
                 <div class="align-self-lg-center">
@@ -55,7 +65,7 @@
             <div class="d-flex flex-wrap gap-3 mt-4 small text-muted" data-feedback-summary>
                 <span>좋아요 <strong data-liked-count>{{ result.feedback_summary.liked_count }}</strong>개 학습</span>
                 <span>싫어요 <strong data-disliked-count>{{ result.feedback_summary.disliked_count }}</strong>개 학습</span>
-                <span data-feedback-loop>피드백 루프 대기 중</span>
+                <span data-feedback-loop>좋아요와 싫어요를 누르면 다음 추천에 반영됩니다</span>
                 <span>
                     Netflix 기준
                     {% if netflix_status.generated_at %}
@@ -221,7 +231,7 @@
             <ul class="list-unstyled stacked-list mb-0 small">
                 <li>좋아요를 누르면 같은 장르, 공급자, 포맷의 점수가 올라갑니다.</li>
                 <li>싫어요를 누르면 동일 작품과 유사 카테고리의 점수가 내려갑니다.</li>
-                <li>최근 본 계열이 반복되면 신선도 보정이 들어가고, 일부는 탐험 슬롯으로 섞입니다.</li>
+                <li>비슷한 작품만 반복되지 않도록 조정하고, 가끔은 새롭게 볼 만한 작품도 함께 보여드립니다.</li>
                 <li>Netflix 한국 영화 Top 10은 공식 Tudum South Korea 페이지 기준으로 캐시를 갱신합니다.</li>
             </ul>
         </div>

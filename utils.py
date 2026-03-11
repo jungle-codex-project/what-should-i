@@ -21,6 +21,14 @@ def parse_csv(raw_value: str):
     return [item.strip() for item in raw_value.split(",") if item.strip()]
 
 
+def parse_form_list(form_data, field_name: str):
+    if hasattr(form_data, "getlist"):
+        values = [item.strip() for item in form_data.getlist(field_name) if item and item.strip()]
+        if values:
+            return values
+    return parse_csv(form_data.get(field_name))
+
+
 def join_csv(values):
     return ", ".join(values or [])
 

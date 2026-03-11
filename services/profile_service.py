@@ -2,6 +2,7 @@ from datetime import datetime
 from copy import deepcopy
 
 from db.mongo import get_collection
+from services.content_sources import normalize_searchable_content_preferences
 from services.personality import (
     TRAIT_META,
     analyze_personality,
@@ -9,7 +10,7 @@ from services.personality import (
     build_default_personality,
     extract_survey_answers,
 )
-from utils import join_csv, parse_csv
+from utils import join_csv, parse_csv, parse_form_list
 
 
 def build_default_profile(user_id: str):
@@ -28,7 +29,7 @@ def build_default_profile(user_id: str):
         },
         "content": {
             "genres": ["로맨스", "힐링"],
-            "platforms": ["영화", "드라마", "넷플릭스"],
+            "platforms": ["넷플릭스", "영화", "시리즈"],
         },
         "activity": {
             "indoor_outdoor": "mixed",
@@ -101,6 +102,11 @@ def get_profile(user_id: str):
 
 
 def update_profile_from_form(user_id: str, form_data):
+    content_preferences = normalize_searchable_content_preferences(
+        genres=parse_form_list(form_data, "content_genres"),
+        platforms=parse_form_list(form_data, "content_platforms"),
+    )
+
     payload = {
         "food": {
             "favorites": parse_csv(form_data.get("food_favorites")),
@@ -114,8 +120,8 @@ def update_profile_from_form(user_id: str, form_data):
             "personal_color": form_data.get("fashion_personal_color", "spring warm"),
         },
         "content": {
-            "genres": parse_csv(form_data.get("content_genres")),
-            "platforms": parse_csv(form_data.get("content_platforms")),
+            "genres": content_preferences["genres"],
+            "platforms": content_preferences["platforms"],
         },
         "activity": {
             "indoor_outdoor": form_data.get("activity_indoor_outdoor", "mixed"),

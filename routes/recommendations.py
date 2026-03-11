@@ -3,7 +3,12 @@ from copy import deepcopy
 from flask import Blueprint, current_app, flash, jsonify, render_template, request, session
 
 from services.content_feedback import get_content_feedback_profile, save_content_feedback
-from services.content_sources import find_content_item, get_netflix_status
+from services.content_sources import (
+    find_content_item,
+    get_netflix_status,
+    get_searchable_content_options,
+    normalize_searchable_content_preferences,
+)
 from services.history import get_full_history, get_recent_history, save_recommendation
 from services.profile_service import get_profile
 from services.recommender import (
@@ -133,21 +138,30 @@ def content():
     trends = get_trends_by_category(region=current_app.config["DEFAULT_REGION"])["content"]
     feedback_profile = get_content_feedback_profile(user_id)
     force_refresh = request.args.get("refresh") == "1"
+    content_options = get_searchable_content_options(force_refresh=force_refresh)
+    default_preferences = normalize_searchable_content_preferences(
+        genres=profile["content"].get("genres", []),
+        platforms=profile["content"].get("platforms", []),
+        options=content_options,
+    )
 
     form_values = {
-        "genres": request.form.get("genres", profile["content"]["genres_text"]),
-        "platforms": request.form.get("platforms", profile["content"]["platforms_text"]),
+        "genres": request.form.getlist("genres") if request.method == "POST" else default_preferences["genres"],
+        "platforms": request.form.getlist("platforms") if request.method == "POST" else default_preferences["platforms"],
         "mood": request.form.get("mood", "light"),
     }
 
-    working_profile["content"]["genres"] = parse_csv(form_values["genres"]) or profile["content"]["genres"]
-    working_profile["content"]["platforms"] = parse_csv(form_values["platforms"]) or profile["content"]["platforms"]
+    effective_genres = form_values["genres"] or default_preferences["genres"]
+    effective_platforms = form_values["platforms"] or default_preferences["platforms"]
+
+    working_profile["content"]["genres"] = effective_genres
+    working_profile["content"]["platforms"] = effective_platforms
 
     result = recommend_content(
         working_profile,
         {
-            "genres": parse_csv(form_values["genres"]),
-            "platforms": parse_csv(form_values["platforms"]),
+            "genres": form_values["genres"],
+            "platforms": form_values["platforms"],
             "mood": form_values["mood"],
         },
         trends=trends,
@@ -171,6 +185,7 @@ def content():
         "recommendations/content.html",
         result=result,
         form_values=form_values,
+        content_options=content_options,
         netflix_status=get_netflix_status(),
     )
 

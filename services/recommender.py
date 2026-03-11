@@ -1,7 +1,7 @@
 from copy import deepcopy
 
 from services.catalog import ACTIVITY_CATALOG, FASHION_CATALOG, FOOD_CATALOG
-from services.content_sources import get_content_inventory, get_netflix_content
+from services.content_sources import get_content_inventory, get_netflix_content, is_searchable_content_item
 from services.personality import personality_bias_for_item
 from utils import get_time_slot
 
@@ -78,20 +78,6 @@ def _recent_content_context(history_entries):
         "recent_providers": recent_providers,
         "recent_genres": recent_genres,
     }
-
-
-def _is_supported_content_item(item):
-    provider = (item.get("provider") or "").lower()
-    content_type = (item.get("content_type") or "").lower()
-    platforms = {platform.lower() for platform in item.get("platforms", [])}
-
-    if provider in {"ott", "youtube"}:
-        return False
-    if content_type in {"웹툰", "영상"}:
-        return False
-    if platforms & {"웹툰", "유튜브"}:
-        return False
-    return True
 
 
 def recommend_food(profile, form_input, trends=None, recent_history=None):
@@ -270,7 +256,7 @@ def recommend_content(profile, form_input, trends=None, recent_history=None, fee
 
     candidates = []
     for item in content_inventory:
-        if not _is_supported_content_item(item):
+        if not is_searchable_content_item(item):
             continue
         score = 30
         reasons = []
@@ -296,7 +282,7 @@ def recommend_content(profile, form_input, trends=None, recent_history=None, fee
         personality_gain = _apply_personality_bias(profile, "content", item["name"], reasons)
         taste_vector += personality_gain
         score += taste_vector
-        signal_breakdown.append({"label": "Taste Vector", "score": _clip(taste_vector, -20, 40)})
+        signal_breakdown.append({"label": "취향 반영", "score": _clip(taste_vector, -20, 40)})
 
         behavior_loop = 0
         direct_feedback = feedback_profile["direct"].get(item["id"], 0)
@@ -328,7 +314,7 @@ def recommend_content(profile, form_input, trends=None, recent_history=None, fee
             8,
         )
         score += behavior_loop
-        signal_breakdown.append({"label": "Behavior Loop", "score": _clip(behavior_loop, -40, 40)})
+        signal_breakdown.append({"label": "좋아요 반영", "score": _clip(behavior_loop, -40, 40)})
 
         trend_velocity = 0
         trend_hits = trend_keywords & _normalize(item.get("trend_keywords", []))
@@ -344,7 +330,7 @@ def recommend_content(profile, form_input, trends=None, recent_history=None, fee
             reasons.append("Netflix 한국 영화 Top 10 반영")
 
         score += trend_velocity
-        signal_breakdown.append({"label": "Trend Velocity", "score": _clip(trend_velocity, 0, 32)})
+        signal_breakdown.append({"label": "인기 흐름", "score": _clip(trend_velocity, 0, 32)})
 
         freshness = item.get("freshness_boost", 0)
         if item["name"].strip().lower() in recent_names:
@@ -354,23 +340,23 @@ def recommend_content(profile, form_input, trends=None, recent_history=None, fee
         provider_count = recent_context["recent_providers"].get((item.get("provider") or "").lower(), 0)
         if provider_count >= 2:
             freshness -= 4
-            reasons.append("같은 공급자 연속 노출 완화")
+            reasons.append("비슷한 추천이 겹치지 않게 조정")
 
         if item["id"] in recent_context["recent_ids"]:
             freshness -= 8
 
         score += freshness
-        signal_breakdown.append({"label": "Freshness", "score": _clip(freshness, -18, 16)})
+        signal_breakdown.append({"label": "겹침 조정", "score": _clip(freshness, -18, 16)})
 
         exploration = 0
         if not genre_hits and direct_feedback >= 0 and item.get("source") == "netflix_tudum":
             exploration += 6
-            reasons.append("탐험 슬롯으로 섞인 신작")
+            reasons.append("새롭게 시도해볼 인기작")
         if mood == "adventure" and not genre_hits:
             exploration += 4
 
         score += exploration
-        signal_breakdown.append({"label": "Exploration Budget", "score": _clip(exploration, 0, 10)})
+        signal_breakdown.append({"label": "새로운 추천", "score": _clip(exploration, 0, 10)})
 
         candidates.append(
             {
@@ -411,14 +397,14 @@ def recommend_content(profile, form_input, trends=None, recent_history=None, fee
         for item in netflix_live[:6]
     ]
     result["algorithm"] = {
-        "name": "SignalMix v2",
-        "summary": "취향 벡터 + 행동 피드백 + 트렌드 속도 + 신선도 + 탐험 슬롯을 함께 섞는 콘텐츠 랭킹 엔진",
+        "name": "추천 기준",
+        "summary": "선택한 취향, 최근 반응, 지금 많이 보는 흐름을 함께 반영해 오늘 볼 만한 작품을 골랐어요.",
         "signals": [
-            "Taste Vector",
-            "Behavior Loop",
-            "Trend Velocity",
-            "Freshness",
-            "Exploration Budget",
+            "선택한 취향",
+            "좋아요와 싫어요 반응",
+            "지금 인기 있는 작품",
+            "비슷한 추천 겹침 조정",
+            "가볍게 섞은 새로운 작품",
         ],
     }
     result["feedback_summary"] = {

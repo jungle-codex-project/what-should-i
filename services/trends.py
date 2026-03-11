@@ -17,7 +17,7 @@ DEFAULT_TRENDS = [
     {"keyword": "마라", "category": "food", "score": 93, "headline": "매운 음식 키워드 급상승", "source": "fallback"},
     {"keyword": "고프코어", "category": "fashion", "score": 91, "headline": "윈드브레이커 스타일 강세", "source": "fallback"},
     {"keyword": "오피스코어", "category": "fashion", "score": 84, "headline": "정돈된 셋업 룩 재부상", "source": "fallback"},
-    {"keyword": "힐링웹툰", "category": "content", "score": 88, "headline": "짧고 편한 콘텐츠 인기", "source": "fallback"},
+    {"keyword": "넷플릭스영화", "category": "content", "score": 88, "headline": "가볍게 보기 좋은 영화 관심 상승", "source": "fallback"},
     {"keyword": "범죄스릴러", "category": "content", "score": 86, "headline": "몰입형 저녁 콘텐츠 수요", "source": "fallback"},
     {"keyword": "전시회", "category": "activity", "score": 79, "headline": "가벼운 문화생활 탐색 증가", "source": "fallback"},
     {"keyword": "러닝크루", "category": "activity", "score": 77, "headline": "저녁 야외 활동 관심 상승", "source": "fallback"},
@@ -40,8 +40,8 @@ CATEGORY_RULES = {
         "fashion", "style", "outfit", "runway", "sneaker", "brand",
     ],
     "content": [
-        "영화", "드라마", "예능", "넷플릭스", "유튜브", "웹툰", "애니", "시리즈", "ott", "콘서트",
-        "movie", "series", "drama", "netflix", "youtube", "webtoon", "anime", "show", "trailer",
+        "영화", "드라마", "예능", "넷플릭스", "애니", "시리즈", "ott", "콘서트",
+        "movie", "series", "drama", "netflix", "anime", "show", "trailer",
     ],
     "activity": [
         "전시", "축제", "여행", "산책", "러닝", "운동", "캠핑", "공연", "팝업", "마라톤",

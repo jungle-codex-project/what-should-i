@@ -1,33 +1,53 @@
 # Repository Conventions
 
-## Tech Stack Decision
+## Tech Stack
 
-### Chosen Stack
+This repository is a single Flask application.
 
-This project uses the following stack:
+- Backend / Web App: Flask
+- Templating: Jinja2
+- UI: Bootstrap 5, custom CSS, jQuery/AJAX
+- Database: MongoDB
+- Runtime: Python 3
+- Deployment target: Gunicorn + Render compatible
 
-- Frontend: Next.js
-- Backend: NestJS
-- Database: PostgreSQL
-- ORM: Prisma
-- Monorepo package manager: pnpm workspace
-
-## Repository Strategy
-
-This project uses a monorepo.
-
-### Monorepo Layout
+## Repository Layout
 
 ```text
-repo/
-  apps/
-    web/         # Next.js frontend
-    api/         # NestJS backend
-  packages/
-    shared/      # shared types, schemas, utilities
-  package.json
-  pnpm-workspace.yaml
+lifestyle-app/
+  app.py
+  config.py
+  db/
+    mongo.py
+  routes/
+    auth.py
+    main.py
+    profile.py
+    recommendations.py
+  services/
+    account.py
+    catalog.py
+    content_feedback.py
+    content_sources.py
+    history.py
+    personality.py
+    profile_service.py
+    recommender.py
+    trends.py
+    weather.py
+  templates/
+  static/
+  seed/
+  docs/
 ```
+
+## Working Rules
+
+- UI changes should usually touch both `templates/` and the corresponding route/service layer.
+- Recommendation logic lives in `services/`. Keep route handlers thin.
+- User-facing copy should stay simple and product-facing. Avoid exposing internal ranking or implementation terminology in templates.
+- The current content recommendation scope is movie / series centered. Webtoon is out of scope for user-facing recommendation flows unless requirements change.
+- When adding new profile inputs, make sure profile save, dashboard usage, and recommendation forms stay consistent.
 
 ## Commit Message
 
@@ -59,7 +79,7 @@ repo/
 - 첫 줄 제목은 가능한 한 짧고 명확하게 작성한다.
 
 ```text
-feat: 구글 로그인 구현
+feat: 콘텐츠 추천 필터 선택형으로 변경
 ```
 
 ### 4. 변경 사항이 많을 경우 추상화해서 작성하고 설명 추가
@@ -68,11 +88,11 @@ feat: 구글 로그인 구현
 - 필요한 경우 본문은 한 칸 띄운 뒤 여러 줄로 설명한다.
 
 ```text
-refactor: 피드 조회 조건 추가
+refactor: 콘텐츠 추천 입력 구조 정리
 
-deletedAt이 null인 조건
-cursor보다 이전 조건
-...
+텍스트 입력을 다중 선택 UI로 변경
+검색 가능 데이터 기준으로 옵션 제한
+사용자 노출 문구 단순화
 ```
 
 ### 5. 커밋 메시지 작성 규칙
@@ -107,8 +127,8 @@ cursor보다 이전 조건
 - 브랜치 하나에는 하나의 기능 또는 하나의 목적만 담는다.
 
 ```text
-feat/implement-google-login
-hotfix/fix-login-redirect
+feat/content-filter-options
+fix/content-copy-cleanup
 ```
 
 ### 3. main 브랜치 운영 규칙
