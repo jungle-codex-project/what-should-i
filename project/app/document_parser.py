@@ -7,6 +7,8 @@ from app.utils import (
     clean_multiline_text,
     compact_text,
     extract_date_candidates,
+    normalize_ocr_text,
+    parse_date_string,
     normalize_whitespace,
     strip_code_fence,
 )
@@ -58,7 +60,7 @@ class DocumentParser:
         self.api_url = api_url
 
     def parse(self, text):
-        cleaned_text = clean_multiline_text(text)
+        cleaned_text = normalize_ocr_text(clean_multiline_text(text))
         if not cleaned_text:
             return self._finalize(
                 {
@@ -246,7 +248,11 @@ class DocumentParser:
                 candidate,
             )
             if date_match:
-                return normalize_whitespace(date_match.group(0))
+                normalized = normalize_whitespace(date_match.group(0))
+                parsed_date = parse_date_string(normalized)
+                if parsed_date:
+                    return parsed_date.isoformat()
+                return normalized
         return ""
 
     def _finalize(self, parsed, source):
