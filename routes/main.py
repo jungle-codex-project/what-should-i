@@ -1,5 +1,6 @@
 from flask import Blueprint, current_app, redirect, render_template, session, url_for
 
+from services.content_feedback import get_content_feedback_profile
 from services.history import ensure_dashboard_daily_history, get_recent_history
 from services.profile_service import get_profile
 from services.recommender import build_dashboard_bundle
@@ -28,7 +29,8 @@ def dashboard():
     trends = get_latest_trends(limit=8)
     weather = get_weather_snapshot(city=current_app.config["DEFAULT_CITY"])
     recent_history = get_recent_history(user_id, limit=12)
-    bundle = build_dashboard_bundle(profile, weather, trends, recent_history)
+    feedback_profile = get_content_feedback_profile(user_id)
+    bundle = build_dashboard_bundle(profile, weather, trends, recent_history, feedback_profile=feedback_profile)
     ensure_dashboard_daily_history(user_id, bundle)
     latest_history = get_recent_history(user_id, limit=5)
 

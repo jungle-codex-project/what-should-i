@@ -233,6 +233,37 @@ h1, h2, h3, h4, h5, .navbar-brand strong {
     border: 1px solid var(--line);
 }
 
+.signal-grid,
+.content-feed-grid {
+    display: grid;
+    gap: 1rem;
+}
+
+.signal-grid {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.signal-card,
+.feed-card {
+    padding: 1rem 1.1rem;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.68);
+    border: 1px solid var(--line);
+}
+
+.signal-card {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: center;
+}
+
+.active-feedback {
+    background: rgba(17, 24, 39, 0.92);
+    color: white;
+    border-color: rgba(17, 24, 39, 0.92);
+}
+
 .trend-score {
     min-width: 46px;
     text-align: center;
@@ -391,6 +422,10 @@ h1, h2, h3, h4, h5, .navbar-brand strong {
 
     .likert-grid {
         grid-template-columns: repeat(2, 1fr);
+    }
+
+    .signal-grid {
+        grid-template-columns: 1fr;
     }
 }
 

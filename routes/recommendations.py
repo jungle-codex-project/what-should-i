@@ -2,6 +2,8 @@ from copy import deepcopy
 
 from flask import Blueprint, current_app, flash, jsonify, render_template, request, session
 
+from services.content_feedback import get_content_feedback_profile, save_content_feedback
+from services.content_sources import find_content_item, get_netflix_status
 from services.history import get_full_history, get_recent_history, save_recommendation
 from services.profile_service import get_profile
 from services.recommender import (
@@ -129,6 +131,8 @@ def content():
     working_profile = deepcopy(profile)
     recent_history = get_recent_history(user_id, limit=12)
     trends = get_trends_by_category()["content"]
+    feedback_profile = get_content_feedback_profile(user_id)
+    force_refresh = request.args.get("refresh") == "1"
 
     form_values = {
         "genres": request.form.get("genres", profile["content"]["genres_text"]),
@@ -148,6 +152,8 @@ def content():
         },
         trends=trends,
         recent_history=recent_history,
+        feedback_profile=feedback_profile,
+        force_refresh=force_refresh,
     )
 
     if request.method == "POST":
@@ -161,7 +167,12 @@ def content():
         )
         flash("콘텐츠 추천을 히스토리에 저장했습니다.", "success")
 
-    return render_template("recommendations/content.html", result=result, form_values=form_values)
+    return render_template(
+        "recommendations/content.html",
+        result=result,
+        form_values=form_values,
+        netflix_status=get_netflix_status(),
+    )
 
 
 @recommendation_bp.route("/activity", methods=["GET", "POST"])
@@ -238,3 +249,33 @@ def quiz_vote():
 def history():
     entries = get_full_history(session["user_id"], limit=40)
     return render_template("history.html", history_entries=entries)
+
+
+@recommendation_bp.route("/content/feedback", methods=["POST"])
+@login_required
+def content_feedback():
+    payload = request.get_json(silent=True) or {}
+    content_id = payload.get("content_id")
+    sentiment = payload.get("sentiment")
+
+    item = find_content_item(content_id, force_refresh=False)
+    if not item:
+        return jsonify({"ok": False, "message": "콘텐츠 정보를 찾을 수 없습니다."}), 404
+
+    try:
+        save_content_feedback(session["user_id"], item, sentiment)
+    except ValueError as exc:
+        return jsonify({"ok": False, "message": str(exc)}), 400
+
+    feedback_profile = get_content_feedback_profile(session["user_id"])
+    return jsonify(
+        {
+            "ok": True,
+            "content_id": content_id,
+            "sentiment": sentiment,
+            "summary": {
+                "liked_count": feedback_profile["liked_count"],
+                "disliked_count": feedback_profile["disliked_count"],
+            },
+        }
+    )

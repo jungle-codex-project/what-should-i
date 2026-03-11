@@ -10,6 +10,8 @@ if str(PROJECT_ROOT) not in sys.path:
 from app import create_app
 from db.mongo import get_collection
 from services.account import create_user, get_user_by_email
+from services.content_feedback import save_content_feedback
+from services.content_sources import find_content_item, refresh_netflix_cache
 from services.history import ensure_dashboard_daily_history, get_recent_history
 from services.personality import analyze_personality
 from services.profile_service import get_profile
@@ -101,7 +103,7 @@ def seed_demo_user():
                 "fashion.colors": ["블랙", "크림", "네이비"],
                 "fashion.personal_color": "winter cool",
                 "content.genres": ["스릴러", "힐링", "판타지"],
-                "content.platforms": ["웹툰", "영화", "유튜브"],
+                "content.platforms": ["웹툰", "영화", "유튜브", "넷플릭스"],
                 "activity.indoor_outdoor": "mixed",
                 "activity.energy": "medium",
                 "activity.social": "either",
@@ -116,6 +118,17 @@ def seed_demo_user():
     profile = get_profile(user["id"])
     weather = get_weather_snapshot()
     trends = DEFAULT_TRENDS
+    refresh_netflix_cache(force=False)
+
+    for content_id, sentiment in [
+        ("local:twist-thriller-film", "like"),
+        ("local:cozy-house-vlog", "like"),
+        ("netflix:netflix_top10_tv:love-is-blind-ohio", "dislike"),
+    ]:
+        item = find_content_item(content_id, force_refresh=False)
+        if item:
+            save_content_feedback(user["id"], item, sentiment)
+
     bundle = build_dashboard_bundle(profile, weather, trends, get_recent_history(user["id"], limit=20))
     ensure_dashboard_daily_history(user["id"], bundle)
 

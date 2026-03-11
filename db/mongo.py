@@ -41,6 +41,9 @@ class MongoManager:
         self.db.recommendation_history.create_index([("user_id", ASCENDING), ("created_at", DESCENDING)])
         self.db.trend_cache.create_index([("generated_at", DESCENDING)])
         self.db.quiz_logs.create_index([("quiz_id", ASCENDING), ("created_at", DESCENDING)])
+        self.db.content_feedback.create_index([("user_id", ASCENDING), ("content_id", ASCENDING)], unique=True)
+        self.db.content_source_cache.create_index([("cache_key", ASCENDING)], unique=True)
+        self.db.content_source_cache.create_index([("generated_at", DESCENDING)])
 
 
 mongo = MongoManager()

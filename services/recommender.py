@@ -1,6 +1,7 @@
 from copy import deepcopy
 
-from services.catalog import ACTIVITY_CATALOG, CONTENT_CATALOG, FASHION_CATALOG, FOOD_CATALOG
+from services.catalog import ACTIVITY_CATALOG, FASHION_CATALOG, FOOD_CATALOG
+from services.content_sources import get_content_inventory, get_netflix_content
 from services.personality import personality_bias_for_item
 from utils import get_time_slot
 
@@ -28,10 +29,10 @@ def _trend_keywords(trends, category=None):
 
 def _finalize_result(category, form_input, candidates):
     ranked = sorted(candidates, key=lambda item: item["score"], reverse=True)
+    for candidate in ranked:
+        candidate["reason_text"] = " / ".join(candidate["reasons"][:3])
+
     top_pick = ranked[0]
-    top_pick["reason_text"] = " / ".join(top_pick["reasons"][:3])
-    for candidate in ranked[1:3]:
-        candidate["reason_text"] = " / ".join(candidate["reasons"][:2])
 
     return {
         "category": category,
@@ -46,6 +47,37 @@ def _apply_personality_bias(profile, category, item_name, reasons):
     if reason:
         reasons.append(reason)
     return bonus
+
+
+def _clip(value, minimum, maximum):
+    return max(minimum, min(maximum, int(round(value))))
+
+
+def _recent_content_context(history_entries):
+    recent_ids = set()
+    recent_providers = {}
+    recent_genres = {}
+
+    for entry in history_entries or []:
+        if entry["category"] != "content":
+            continue
+        recommendation = entry["recommendation"]
+        content_id = recommendation.get("id")
+        if content_id:
+            recent_ids.add(content_id)
+
+        provider = (recommendation.get("provider") or "").lower()
+        if provider:
+            recent_providers[provider] = recent_providers.get(provider, 0) + 1
+
+        for genre in recommendation.get("genres", []):
+            recent_genres[genre.lower()] = recent_genres.get(genre.lower(), 0) + 1
+
+    return {
+        "recent_ids": recent_ids,
+        "recent_providers": recent_providers,
+        "recent_genres": recent_genres,
+    }
 
 
 def recommend_food(profile, form_input, trends=None, recent_history=None):
@@ -202,54 +234,150 @@ def recommend_fashion(profile, form_input, trends=None, recent_history=None):
     )
 
 
-def recommend_content(profile, form_input, trends=None, recent_history=None):
+def recommend_content(profile, form_input, trends=None, recent_history=None, feedback_profile=None, force_refresh=False):
     genres = _normalize(form_input.get("genres") or profile["content"].get("genres", []))
     platforms = _normalize(form_input.get("platforms") or profile["content"].get("platforms", []))
     mood = form_input.get("mood", "light")
     trend_keywords = _trend_keywords(trends, "content")
     recent_names = _recent_names(recent_history, "content")
+    recent_context = _recent_content_context(recent_history)
+    feedback_profile = feedback_profile or {
+        "direct": {},
+        "genre_scores": {},
+        "provider_scores": {},
+        "platform_scores": {},
+        "type_scores": {},
+        "liked_count": 0,
+        "disliked_count": 0,
+        "has_feedback": False,
+    }
+    content_inventory = get_content_inventory(force_refresh=force_refresh)
+    netflix_live = get_netflix_content(force_refresh=force_refresh)
 
     candidates = []
-    for item in CONTENT_CATALOG:
-        score = 42
+    for item in content_inventory:
+        score = 30
         reasons = []
+        signal_breakdown = []
 
         genre_hits = genres & _normalize(item["genres"])
+        taste_vector = 0
         if genre_hits:
-            score += min(len(genre_hits) * 12, 24)
+            taste_gain = min(len(genre_hits) * 12, 24)
+            taste_vector += taste_gain
             reasons.append(f"장르 취향 {', '.join(sorted(genre_hits)[:2])}")
 
         platform_hits = platforms & _normalize(item["platforms"])
         if platform_hits:
-            score += min(len(platform_hits) * 10, 20)
+            platform_gain = min(len(platform_hits) * 10, 20)
+            taste_vector += platform_gain
             reasons.append(f"선호 플랫폼 {', '.join(sorted(platform_hits)[:2])}")
 
         if mood in item["moods"]:
-            score += 10
+            taste_vector += 10
             reasons.append("현재 무드와 맞음")
 
-        trend_hits = trend_keywords & _normalize(item["trend_keywords"])
+        personality_gain = _apply_personality_bias(profile, "content", item["name"], reasons)
+        taste_vector += personality_gain
+        score += taste_vector
+        signal_breakdown.append({"label": "Taste Vector", "score": _clip(taste_vector, -20, 40)})
+
+        behavior_loop = 0
+        direct_feedback = feedback_profile["direct"].get(item["id"], 0)
+        if direct_feedback > 0:
+            behavior_loop += 26
+            reasons.append("좋아요 이력이 있는 계열")
+        elif direct_feedback < 0:
+            behavior_loop -= 36
+            reasons.append("싫어요 이력 반영")
+
+        behavior_loop += _clip(
+            sum(feedback_profile["genre_scores"].get(genre.lower(), 0) for genre in item["genres"]),
+            -18,
+            18,
+        )
+        behavior_loop += _clip(
+            sum(feedback_profile["platform_scores"].get(platform.lower(), 0) for platform in item["platforms"]),
+            -14,
+            14,
+        )
+        behavior_loop += _clip(
+            feedback_profile["provider_scores"].get((item.get("provider") or "").lower(), 0),
+            -10,
+            10,
+        )
+        behavior_loop += _clip(
+            feedback_profile["type_scores"].get((item.get("content_type") or "").lower(), 0),
+            -8,
+            8,
+        )
+        score += behavior_loop
+        signal_breakdown.append({"label": "Behavior Loop", "score": _clip(behavior_loop, -40, 40)})
+
+        trend_velocity = 0
+        trend_hits = trend_keywords & _normalize(item.get("trend_keywords", []))
         if trend_hits:
-            score += min(len(trend_hits) * 6, 12)
+            trend_velocity += min(len(trend_hits) * 7, 14)
             reasons.append("지금 뜨는 키워드 반영")
 
+        if item.get("source") == "netflix_tudum":
+            stats = item.get("stats", {})
+            rank_boost = max(0, 13 - stats.get("rank", 10))
+            views_boost = min(int(stats.get("views", 0) / 2000000), 18)
+            weeks_penalty = min(stats.get("weeks_in_top10", 1), 10) - 1
+            trend_velocity += rank_boost + views_boost - weeks_penalty
+            reasons.append("Netflix 실시간 Top 10 반영")
+
+        score += trend_velocity
+        signal_breakdown.append({"label": "Trend Velocity", "score": _clip(trend_velocity, 0, 32)})
+
+        freshness = item.get("freshness_boost", 0)
         if item["name"].strip().lower() in recent_names:
-            score -= 10
+            freshness -= 10
             reasons.append("최근 추천 중복 보정")
 
-        score += _apply_personality_bias(profile, "content", item["name"], reasons)
+        provider_count = recent_context["recent_providers"].get((item.get("provider") or "").lower(), 0)
+        if provider_count >= 2:
+            freshness -= 4
+            reasons.append("같은 공급자 연속 노출 완화")
+
+        if item["id"] in recent_context["recent_ids"]:
+            freshness -= 8
+
+        score += freshness
+        signal_breakdown.append({"label": "Freshness", "score": _clip(freshness, -18, 16)})
+
+        exploration = 0
+        if not genre_hits and direct_feedback >= 0 and item.get("source") == "netflix_tudum":
+            exploration += 6
+            reasons.append("탐험 슬롯으로 섞인 신작")
+        if mood == "adventure" and not genre_hits:
+            exploration += 4
+
+        score += exploration
+        signal_breakdown.append({"label": "Exploration Budget", "score": _clip(exploration, 0, 10)})
 
         candidates.append(
             {
+                "id": item["id"],
                 "name": item["name"],
                 "description": item["description"],
                 "score": score,
                 "reasons": reasons or ["무난하게 만족도 높은 콘텐츠"],
-                "meta": [", ".join(item["platforms"]), ", ".join(item["genres"][:2]), mood],
+                "meta": [item.get("provider", ""), item.get("content_type", ""), item.get("duration_label", mood)],
+                "provider": item.get("provider"),
+                "platforms": item.get("platforms", []),
+                "genres": item.get("genres", []),
+                "content_type": item.get("content_type"),
+                "signal_breakdown": [signal for signal in signal_breakdown if signal["score"] != 0],
+                "source": item.get("source", "curated"),
+                "source_url": item.get("source_url"),
+                "feedback_state": "like" if direct_feedback > 0 else "dislike" if direct_feedback < 0 else None,
+                "stats": item.get("stats"),
             }
         )
 
-    return _finalize_result(
+    result = _finalize_result(
         "content",
         {
             "genres": list(genres),
@@ -258,6 +386,28 @@ def recommend_content(profile, form_input, trends=None, recent_history=None):
         },
         candidates,
     )
+    ranked = sorted(candidates, key=lambda item: item["score"], reverse=True)
+    result["feed"] = ranked[:10]
+    result["netflix_now"] = [
+        next((candidate for candidate in ranked if candidate["id"] == item["id"]), item)
+        for item in netflix_live[:6]
+    ]
+    result["algorithm"] = {
+        "name": "SignalMix v2",
+        "summary": "취향 벡터 + 행동 피드백 + 트렌드 속도 + 신선도 + 탐험 슬롯을 함께 섞는 콘텐츠 랭킹 엔진",
+        "signals": [
+            "Taste Vector",
+            "Behavior Loop",
+            "Trend Velocity",
+            "Freshness",
+            "Exploration Budget",
+        ],
+    }
+    result["feedback_summary"] = {
+        "liked_count": feedback_profile["liked_count"],
+        "disliked_count": feedback_profile["disliked_count"],
+    }
+    return result
 
 
 def recommend_activity(profile, form_input, weather, trends=None, recent_history=None):
@@ -330,7 +480,7 @@ def recommend_activity(profile, form_input, weather, trends=None, recent_history
     )
 
 
-def build_dashboard_bundle(profile, weather, trends, recent_history):
+def build_dashboard_bundle(profile, weather, trends, recent_history, feedback_profile=None):
     content_profile = deepcopy(profile["content"])
     food_result = recommend_food(
         profile,
@@ -364,6 +514,7 @@ def build_dashboard_bundle(profile, weather, trends, recent_history):
         },
         trends=trends,
         recent_history=recent_history,
+        feedback_profile=feedback_profile,
     )
     activity_result = recommend_activity(
         profile,

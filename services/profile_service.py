@@ -28,7 +28,7 @@ def build_default_profile(user_id: str):
         },
         "content": {
             "genres": ["로맨스", "힐링"],
-            "platforms": ["웹툰", "유튜브"],
+            "platforms": ["웹툰", "유튜브", "넷플릭스"],
         },
         "activity": {
             "indoor_outdoor": "mixed",

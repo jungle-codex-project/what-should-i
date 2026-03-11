@@ -2,22 +2,22 @@
 {% block title %}콘텐츠 추천 | WhatShouldI{% endblock %}
 {% block content %}
 <section class="page-header-block">
-    <span class="eyebrow">Content Recommender</span>
+    <span class="eyebrow">Content Feed</span>
     <h1 class="display-6 fw-bold mt-2">오늘 뭐 보지?</h1>
-    <p class="text-muted">웹툰, 영화, 유튜브, 드라마 중에서 지금 무드와 장르 취향에 맞는 콘텐츠를 골라줍니다.</p>
+    <p class="text-muted">장르 취향, 현재 무드, 심리 프로필, 좋아요/싫어요, 트렌드, Netflix 실시간 인기 데이터를 함께 섞어서 추천 피드를 만듭니다.</p>
 </section>
 
-<div class="row g-4">
+<div class="row g-4 mb-4">
     <div class="col-lg-5">
         <div class="card-surface">
             <form method="post" class="vstack gap-3">
                 <div>
                     <label class="form-label">장르 취향</label>
-                    <input type="text" name="genres" class="form-control" value="{{ form_values.genres }}" placeholder="예: 판타지, 로맨스, 스릴러">
+                    <input type="text" name="genres" class="form-control" value="{{ form_values.genres }}" placeholder="예: 판타지, 로맨스, 스릴러, 다큐">
                 </div>
                 <div>
-                    <label class="form-label">선호 플랫폼</label>
-                    <input type="text" name="platforms" class="form-control" value="{{ form_values.platforms }}" placeholder="예: 웹툰, 영화, 유튜브">
+                    <label class="form-label">선호 플랫폼 / 서비스</label>
+                    <input type="text" name="platforms" class="form-control" value="{{ form_values.platforms }}" placeholder="예: 웹툰, 영화, 유튜브, 드라마, 넷플릭스">
                 </div>
                 <div>
                     <label class="form-label">현재 무드</label>
@@ -34,7 +34,153 @@
         </div>
     </div>
     <div class="col-lg-7">
-        {% include "components/recommendation_result.html" %}
+        <div class="card-surface tone-mix h-100">
+            <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
+                <div>
+                    <span class="capsule-chip">{{ result.algorithm.name }}</span>
+                    <h2 class="h3 mt-3 mb-2">유튜브처럼 보이는 추천 엔진 레이어</h2>
+                    <p class="text-muted mb-0">{{ result.algorithm.summary }}</p>
+                </div>
+                <div class="align-self-lg-center">
+                    <a href="{{ url_for('recommendations.content', refresh=1) }}" class="btn btn-outline-dark rounded-pill px-4">Netflix 최신 데이터 새로고침</a>
+                </div>
+            </div>
+            <div class="d-flex flex-wrap gap-2 mt-4">
+                {% for signal in result.algorithm.signals %}
+                <span class="trend-chip">{{ signal }}</span>
+                {% endfor %}
+            </div>
+            <div class="d-flex flex-wrap gap-3 mt-4 small text-muted" data-feedback-summary>
+                <span>좋아요 <strong data-liked-count>{{ result.feedback_summary.liked_count }}</strong>개 학습</span>
+                <span>싫어요 <strong data-disliked-count>{{ result.feedback_summary.disliked_count }}</strong>개 학습</span>
+                <span data-feedback-loop>피드백 루프 대기 중</span>
+                <span>
+                    Netflix 기준
+                    {% if netflix_status.generated_at %}
+                    {{ netflix_status.generated_at.strftime('%Y-%m-%d %H:%M UTC') }}
+                    {% else %}
+                    캐시 준비 중
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card-surface result-panel mb-4">
+            <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                <div>
+                    <span class="capsule-chip">Top Pick</span>
+                    <h2 class="h3 mt-3 mb-2">{{ result.top_pick.name }}</h2>
+                    <p class="text-muted mb-0">{{ result.top_pick.description }}</p>
+                </div>
+                <div class="score-pill">
+                    <small>score</small>
+                    <strong>{{ result.top_pick.score }}</strong>
+                </div>
+            </div>
+
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                {% for reason in result.top_pick.reasons[:4] %}
+                <span class="trend-chip">{{ reason }}</span>
+                {% endfor %}
+            </div>
+
+            <div class="detail-grid mb-4">
+                {% for meta in result.top_pick.meta %}
+                <div>{{ meta }}</div>
+                {% endfor %}
+            </div>
+
+            <div class="signal-grid mb-4">
+                {% for signal in result.top_pick.signal_breakdown %}
+                <div class="signal-card">
+                    <strong>{{ signal.label }}</strong>
+                    <span>{{ signal.score }}</span>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <button class="btn btn-outline-dark rounded-pill content-feedback-btn {% if result.top_pick.feedback_state == 'like' %}active-feedback{% endif %}" data-content-id="{{ result.top_pick.id }}" data-sentiment="like">좋아요</button>
+                <button class="btn btn-outline-dark rounded-pill content-feedback-btn {% if result.top_pick.feedback_state == 'dislike' %}active-feedback{% endif %}" data-content-id="{{ result.top_pick.id }}" data-sentiment="dislike">싫어요</button>
+                {% if result.top_pick.source == 'netflix_tudum' %}
+                <span class="capsule-chip">Netflix Top 10</span>
+                {% endif %}
+                <span class="text-muted small feedback-message" data-feedback-message="{{ result.top_pick.id }}"></span>
+            </div>
+        </div>
+
+        <div class="card-surface">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2 class="h4 mb-0">추천 피드</h2>
+                <span class="capsule-chip">Top {{ result.feed|length }}</span>
+            </div>
+            <div class="content-feed-grid">
+                {% for item in result.feed[1:] %}
+                <article class="feed-card">
+                    <div class="d-flex justify-content-between gap-3 align-items-start mb-3">
+                        <div>
+                            <strong class="d-block">{{ item.name }}</strong>
+                            <small class="text-muted">{{ item.provider }} · {{ item.content_type }}</small>
+                        </div>
+                        <span class="trend-score">{{ item.score }}</span>
+                    </div>
+                    <p class="text-muted small mb-3">{{ item.description }}</p>
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        {% for genre in item.genres[:3] %}
+                        <span class="trend-chip">{{ genre }}</span>
+                        {% endfor %}
+                    </div>
+                    <div class="small text-muted mb-3">{{ item.reason_text }}</div>
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        <button class="btn btn-sm btn-outline-dark rounded-pill content-feedback-btn {% if item.feedback_state == 'like' %}active-feedback{% endif %}" data-content-id="{{ item.id }}" data-sentiment="like">좋아요</button>
+                        <button class="btn btn-sm btn-outline-dark rounded-pill content-feedback-btn {% if item.feedback_state == 'dislike' %}active-feedback{% endif %}" data-content-id="{{ item.id }}" data-sentiment="dislike">싫어요</button>
+                        <span class="feedback-message small text-muted" data-feedback-message="{{ item.id }}"></span>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card-surface mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2 class="h4 mb-0">Netflix 실시간 인기</h2>
+                <span class="capsule-chip">Official Tudum</span>
+            </div>
+            <div class="vstack gap-3">
+                {% for item in result.netflix_now %}
+                <div class="trend-row">
+                    <div>
+                        <strong>{{ item.name }}</strong>
+                        <p class="mb-0 text-muted small">
+                            {{ item.content_type }} · {{ item.provider }}
+                            {% if item.stats %}
+                            · {{ "{:,}".format(item.stats.views) }} views
+                            {% endif %}
+                        </p>
+                    </div>
+                    <span class="trend-score">
+                        {% if item.stats %}#{{ item.stats.rank }}{% else %}Top{% endif %}
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="card-surface">
+            <h2 class="h4 mb-3">다음 추천에 반영되는 규칙</h2>
+            <ul class="list-unstyled stacked-list mb-0 small">
+                <li>좋아요를 누르면 같은 장르, 공급자, 포맷의 점수가 올라갑니다.</li>
+                <li>싫어요를 누르면 동일 작품과 유사 카테고리의 점수가 내려갑니다.</li>
+                <li>최근 본 계열이 반복되면 신선도 보정이 들어가고, 일부는 탐험 슬롯으로 섞입니다.</li>
+                <li>Netflix Top 10은 공식 Tudum 페이지 기준으로 캐시를 갱신합니다.</li>
+            </ul>
+        </div>
     </div>
 </div>
 {% endblock %}

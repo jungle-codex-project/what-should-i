@@ -34,4 +34,39 @@ $(function () {
                 button.closest(".quiz-card").find(".quiz-vote-btn").prop("disabled", false);
             });
     });
+
+    $(document).on("click", ".content-feedback-btn", function () {
+        const button = $(this);
+        const contentId = button.data("content-id");
+        const sentiment = button.data("sentiment");
+        const group = $(`.content-feedback-btn[data-content-id='${contentId}']`);
+        const message = $(`[data-feedback-message='${contentId}']`);
+
+        group.prop("disabled", true);
+
+        $.ajax({
+            url: "/content/feedback",
+            method: "POST",
+            contentType: "application/json",
+            data: JSON.stringify({ content_id: contentId, sentiment: sentiment }),
+        })
+            .done(function (response) {
+                group.removeClass("active-feedback");
+                $(`.content-feedback-btn[data-content-id='${contentId}'][data-sentiment='${sentiment}']`).addClass("active-feedback");
+                message.text("학습 완료. 다음 추천부터 반영됩니다.");
+
+                if (response.summary) {
+                    $("[data-liked-count]").text(response.summary.liked_count);
+                    $("[data-disliked-count]").text(response.summary.disliked_count);
+                    $("[data-feedback-loop]").text("피드백 루프가 활성화되었습니다.");
+                }
+            })
+            .fail(function (xhr) {
+                const errorText = xhr.responseJSON?.message || "피드백 저장 중 문제가 발생했습니다.";
+                message.text(errorText);
+            })
+            .always(function () {
+                group.prop("disabled", false);
+            });
+    });
 });
