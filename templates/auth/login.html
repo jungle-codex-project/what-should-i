@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% block title %}로그인 | WhatShouldI{% endblock %}
+{% block title %}로그인 | WhatShouldIDo{% endblock %}
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-lg-5">
         <div class="card-surface auth-card">
             <span class="eyebrow">Welcome back</span>
             <h1 class="h2 mt-2 mb-3">오늘의 대시보드로 돌아가기</h1>
-            <p class="text-muted mb-4">WhatShouldI는 하루의 선택을 한 번에 정리해줍니다.</p>
+            <p class="text-muted mb-4">WhatShouldIDo는 오늘의 선택을 한 화면에서 정리해줍니다.</p>
             <form method="post" class="vstack gap-3">
                 <input type="hidden" name="next" value="{{ next_url or url_for('main.dashboard') }}">
                 <div>

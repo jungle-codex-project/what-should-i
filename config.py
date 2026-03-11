@@ -16,7 +16,7 @@ def _env_flag(name: str, default: bool = False) -> bool:
 
 
 class Config:
-    APP_NAME = "WhatShouldI"
+    APP_NAME = "WhatShouldIDo"
     SECRET_KEY = os.getenv("SECRET_KEY", "whatshouldi-dev-secret")
     DEBUG = _env_flag("FLASK_DEBUG", True)
     HOST = os.getenv("FLASK_HOST", "0.0.0.0")

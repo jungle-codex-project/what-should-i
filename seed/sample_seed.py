@@ -134,7 +134,7 @@ def seed_demo_user():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Seed sample data for WhatShouldI")
+    parser = argparse.ArgumentParser(description="Seed sample data for WhatShouldIDo")
     parser.add_argument("--with-demo-user", action="store_true", help="Create demo user and sample history")
     args = parser.parse_args()
 
