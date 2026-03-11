@@ -1,5 +1,34 @@
 # Repository Conventions
 
+## Tech Stack Decision
+
+### Chosen Stack
+
+This project uses the following stack:
+
+- Frontend: Next.js
+- Backend: NestJS
+- Database: PostgreSQL
+- ORM: Prisma
+- Monorepo package manager: pnpm workspace
+
+## Repository Strategy
+
+This project uses a monorepo.
+
+### Monorepo Layout
+
+```text
+repo/
+  apps/
+    web/         # Next.js frontend
+    api/         # NestJS backend
+  packages/
+    shared/      # shared types, schemas, utilities
+  package.json
+  pnpm-workspace.yaml
+```
+
 ## Commit Message
 
 ### 1. 작업 유형 지정
