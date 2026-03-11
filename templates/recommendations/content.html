@@ -4,7 +4,7 @@
 <section class="page-header-block">
     <span class="eyebrow">Content Feed</span>
     <h1 class="display-6 fw-bold mt-2">오늘 뭐 보지?</h1>
-    <p class="text-muted">장르 취향, 현재 무드, 심리 프로필, 좋아요/싫어요, 트렌드, Netflix 실시간 인기 데이터를 함께 섞어서 추천 피드를 만듭니다.</p>
+    <p class="text-muted">장르 취향, 현재 무드, 심리 프로필, 좋아요/싫어요, 트렌드, Netflix 한국 영화 Top 10 데이터를 함께 섞어서 추천 피드를 만듭니다.</p>
 </section>
 
 <div class="row g-4 mb-4">
@@ -42,7 +42,7 @@
                     <p class="text-muted mb-0">{{ result.algorithm.summary }}</p>
                 </div>
                 <div class="align-self-lg-center">
-                    <a href="{{ url_for('recommendations.content', refresh=1) }}" class="btn btn-outline-dark rounded-pill px-4">Netflix 최신 데이터 새로고침</a>
+                    <a href="{{ url_for('recommendations.content', refresh=1) }}" class="btn btn-outline-dark rounded-pill px-4">Netflix 한국 영화 데이터 새로고침</a>
                 </div>
             </div>
             <div class="d-flex flex-wrap gap-2 mt-4">
@@ -62,6 +62,9 @@
                     캐시 준비 중
                     {% endif %}
                 </span>
+                {% if netflix_status.period_label %}
+                <span>{{ netflix_status.period_label }}</span>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -107,7 +110,7 @@
                 <button class="btn btn-outline-dark rounded-pill content-feedback-btn {% if result.top_pick.feedback_state == 'like' %}active-feedback{% endif %}" data-content-id="{{ result.top_pick.id }}" data-sentiment="like">좋아요</button>
                 <button class="btn btn-outline-dark rounded-pill content-feedback-btn {% if result.top_pick.feedback_state == 'dislike' %}active-feedback{% endif %}" data-content-id="{{ result.top_pick.id }}" data-sentiment="dislike">싫어요</button>
                 {% if result.top_pick.source == 'netflix_tudum' %}
-                <span class="capsule-chip">Netflix Top 10</span>
+                <span class="capsule-chip">Netflix Korea Movies Top 10</span>
                 {% endif %}
                 <span class="text-muted small feedback-message" data-feedback-message="{{ result.top_pick.id }}"></span>
             </div>
@@ -149,7 +152,7 @@
     <div class="col-lg-5">
         <div class="card-surface mb-4">
             <div class="d-flex justify-content-between align-items-center mb-3">
-                <h2 class="h4 mb-0">Netflix 실시간 인기</h2>
+                <h2 class="h4 mb-0">Netflix 한국 영화 Top 10</h2>
                 <span class="capsule-chip">Official Tudum</span>
             </div>
             <div class="vstack gap-3">
@@ -160,7 +163,7 @@
                         <p class="mb-0 text-muted small">
                             {{ item.content_type }} · {{ item.provider }}
                             {% if item.stats %}
-                            · {{ "{:,}".format(item.stats.views) }} views
+                            · {{ item.stats.weeks_in_top10 }}주 연속 Top 10
                             {% endif %}
                         </p>
                     </div>
@@ -178,7 +181,7 @@
                 <li>좋아요를 누르면 같은 장르, 공급자, 포맷의 점수가 올라갑니다.</li>
                 <li>싫어요를 누르면 동일 작품과 유사 카테고리의 점수가 내려갑니다.</li>
                 <li>최근 본 계열이 반복되면 신선도 보정이 들어가고, 일부는 탐험 슬롯으로 섞입니다.</li>
-                <li>Netflix Top 10은 공식 Tudum 페이지 기준으로 캐시를 갱신합니다.</li>
+                <li>Netflix 한국 영화 Top 10은 공식 Tudum South Korea 페이지 기준으로 캐시를 갱신합니다.</li>
             </ul>
         </div>
     </div>

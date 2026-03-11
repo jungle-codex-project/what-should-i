@@ -123,7 +123,7 @@ def seed_demo_user():
     for content_id, sentiment in [
         ("local:twist-thriller-film", "like"),
         ("local:cozy-house-vlog", "like"),
-        ("netflix:netflix_top10_tv:love-is-blind-ohio", "dislike"),
+        ("netflix:netflix_top10_kr_movies:no-other-choice", "dislike"),
     ]:
         item = find_content_item(content_id, force_refresh=False)
         if item:

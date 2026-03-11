@@ -323,10 +323,9 @@ def recommend_content(profile, form_input, trends=None, recent_history=None, fee
         if item.get("source") == "netflix_tudum":
             stats = item.get("stats", {})
             rank_boost = max(0, 13 - stats.get("rank", 10))
-            views_boost = min(int(stats.get("views", 0) / 2000000), 18)
-            weeks_penalty = min(stats.get("weeks_in_top10", 1), 10) - 1
-            trend_velocity += rank_boost + views_boost - weeks_penalty
-            reasons.append("Netflix 실시간 Top 10 반영")
+            stability_boost = max(0, 6 - min(stats.get("weeks_in_top10", 1), 6))
+            trend_velocity += rank_boost + stability_boost
+            reasons.append("Netflix 한국 영화 Top 10 반영")
 
         score += trend_velocity
         signal_breakdown.append({"label": "Trend Velocity", "score": _clip(trend_velocity, 0, 32)})
