@@ -4,6 +4,7 @@ Mini project repository.
 
 ## Project Location
 
-Application source files live under `project/`.
+Repository documents:
 
-See `project/README.md` for project-specific details.
+- `AGENTS.md`: agent instruction file
+- `docs/CONVENTIONS.md`: team conventions for commits and branches
