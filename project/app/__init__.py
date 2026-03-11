@@ -58,6 +58,7 @@ def create_app():
     def inject_template_helpers():
         document_type_labels = {
             "medical_certificate": "진단서 / 진료확인서",
+            "medical_receipt": "의료 영수증 / 결제내역서",
             "funeral_certificate": "장례 관련 증빙",
             "competition_participation": "대회 참가 확인서",
             "counseling_confirmation": "상담 확인서",
@@ -66,4 +67,3 @@ def create_app():
         return {"document_type_labels": document_type_labels}
 
     return app
-

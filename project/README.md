@@ -23,6 +23,7 @@ project/
 │   ├── engine.py
 │   └── rules.json
 ├── sample_docs/
+│   ├── sample_medical_receipt.txt
 │   ├── sample_medical_certificate.pdf
 │   └── sample_medical_certificate.txt
 ├── static/
@@ -49,8 +50,9 @@ project/
 ## 2. 핵심 기능
 
 - 학생 문서 업로드: PDF, PNG, JPG, JPEG
-- OCR 추출: Tesseract 기반 텍스트 추출
+- OCR 추출: 전처리 + Tesseract 다중 영역 OCR
 - 문서 파싱: OpenAI API 또는 휴리스틱 기반 구조화
+- 의료 영수증 / 결제내역서 인식: `medical_receipt` 유형 지원
 - 규칙 엔진: 날짜, 기관명, 기간 기준 자동 검증
 - 관리자 대시보드: 업로드 목록, 상태, 상세 결과 조회
 - 개인정보 보호: `AUTO_DELETE_ORIGINAL=True` 시 원본 파일과 OCR 원문 미저장
@@ -60,7 +62,7 @@ project/
 
 1. 학생이 문서를 업로드합니다.
 2. 서버가 파일을 저장합니다.
-3. OCR 모듈이 텍스트를 추출합니다.
+3. OCR 모듈이 문서 보정, 표선 제거, 영역 분할 후 텍스트를 추출합니다.
 4. LLM 또는 휴리스틱 파서가 구조화 데이터를 만듭니다.
 5. 규칙 엔진이 자동 승인 여부를 판단합니다.
 6. 관리자 대시보드에서 결과를 검토합니다.
@@ -70,10 +72,10 @@ project/
 ```json
 {
   "name": "김정글",
-  "document_type": "medical_certificate",
+  "document_type": "medical_receipt",
   "organization": "정글대학교병원",
   "issue_date": "2026년 03월 10일",
-  "valid_period": "2026년 03월 09일 ~ 2026년 03월 11일"
+  "valid_period": "2026년 03월 10일"
 }
 ```
 
@@ -86,6 +88,8 @@ project/
 - 발급일이 최근 `90일` 이내여야 함
 - 유효기간이 `14일`을 넘으면 자동 승인 불가
 - 신뢰도가 `0.70` 이상이어야 자동 승인
+
+의료 영수증 계열 문서는 `issue_date`를 당일 `valid_period`로 간주해 처리합니다.
 
 ## 6. 사전 준비
 
@@ -158,7 +162,8 @@ docker compose up --build
 
 ## 10. 샘플 테스트 문서
 
-샘플 텍스트는 [`sample_docs/sample_medical_certificate.txt`](./sample_docs/sample_medical_certificate.txt)에 있습니다.
+샘플 텍스트는 [`sample_docs/sample_medical_certificate.txt`](./sample_docs/sample_medical_certificate.txt)와
+[`sample_docs/sample_medical_receipt.txt`](./sample_docs/sample_medical_receipt.txt)에 있습니다.
 샘플 PDF는 `sample_docs/sample_medical_certificate.pdf`로 제공합니다.
 
 테스트 방법:

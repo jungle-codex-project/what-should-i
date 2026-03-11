@@ -17,6 +17,10 @@ def normalize_whitespace(text):
     return re.sub(r"\s+", " ", text).strip()
 
 
+def compact_text(text):
+    return re.sub(r"\s+", "", text or "")
+
+
 def strip_code_fence(text):
     stripped = text.strip()
     if stripped.startswith("```"):
@@ -27,8 +31,10 @@ def strip_code_fence(text):
 
 def extract_date_candidates(text):
     patterns = [
+        r"\d{4}[./-]\d{1,2}[./-]\d{1,2}\s*(?:오전|오후|AM|PM|am|pm)?\s*\d{1,2}:\d{2}(?::\d{2})?",
         r"\d{4}[./-]\d{1,2}[./-]\d{1,2}",
         r"\d{4}\s*년\s*\d{1,2}\s*월\s*\d{1,2}\s*일",
+        r"\d{2}[./-]\d{1,2}[./-]\d{1,2}",
         r"\d{1,2}[./-]\d{1,2}[./-]\d{4}",
     ]
     matches = []
@@ -50,6 +56,12 @@ def parse_date_string(value):
     candidates = [raw] + extract_date_candidates(raw)
     for candidate in candidates:
         cleaned = candidate.strip()
+        cleaned = re.sub(
+            r"(오전|오후|AM|PM|am|pm)\s*\d{1,2}:\d{2}(?::\d{2})?",
+            "",
+            cleaned,
+        )
+        cleaned = re.sub(r"\d{1,2}:\d{2}(?::\d{2})?", "", cleaned)
         cleaned = cleaned.replace("년", "-").replace("월", "-").replace("일", "")
         cleaned = cleaned.replace(".", "-").replace("/", "-")
         cleaned = re.sub(r"\s+", "", cleaned)
@@ -77,3 +89,17 @@ def parse_period_bounds(value):
         return parsed_dates[0], None
     return parsed_dates[0], parsed_dates[1]
 
+
+def dedupe_lines(lines):
+    unique_lines = []
+    seen = set()
+    for line in lines:
+        cleaned = normalize_whitespace(line)
+        if not cleaned:
+            continue
+        key = compact_text(cleaned.lower())
+        if key in seen:
+            continue
+        seen.add(key)
+        unique_lines.append(cleaned)
+    return unique_lines
