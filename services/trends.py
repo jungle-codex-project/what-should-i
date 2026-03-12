@@ -53,29 +53,59 @@ DEFAULT_QUIZ_QUESTIONS = [
     {
         "id": "food_faceoff",
         "title": "오늘의 푸드 밸런스 게임",
-        "prompt": "퇴근 후 한 입, 마라탕 vs 탕후루",
+        "prompt": "지금 더 궁금한 푸드 키워드는?",
         "left_label": "마라탕",
         "right_label": "탕후루",
-        "baseline_left": 58,
-        "baseline_right": 42,
+        "left_headline": "실시간 Google Trends 연결 전 기본 푸드 대결입니다.",
+        "right_headline": "실시간 Google Trends 연결 전 기본 푸드 대결입니다.",
+        "left_traffic": None,
+        "right_traffic": None,
+        "left_source_url": GOOGLE_TRENDS_RSS_URL.format(region="KR"),
+        "right_source_url": GOOGLE_TRENDS_RSS_URL.format(region="KR"),
+        "baseline_left": 12,
+        "baseline_right": 12,
+        "baseline_label": "샘플 밸런스",
+        "baseline_note": "실시간 Google Trends 데이터를 불러오지 못하면 샘플 비교를 표시합니다.",
+        "source_label": "샘플 퀴즈",
+        "is_live": False,
     },
     {
         "id": "fashion_faceoff",
         "title": "오늘의 코디 밸런스 게임",
-        "prompt": "미니멀 셋업 vs 스트릿 윈드브레이커",
+        "prompt": "지금 더 눈에 띄는 스타일 키워드는?",
         "left_label": "미니멀 셋업",
         "right_label": "스트릿 윈드브레이커",
-        "baseline_left": 51,
-        "baseline_right": 49,
+        "left_headline": "실시간 Google Trends 연결 전 기본 패션 대결입니다.",
+        "right_headline": "실시간 Google Trends 연결 전 기본 패션 대결입니다.",
+        "left_traffic": None,
+        "right_traffic": None,
+        "left_source_url": GOOGLE_TRENDS_RSS_URL.format(region="KR"),
+        "right_source_url": GOOGLE_TRENDS_RSS_URL.format(region="KR"),
+        "baseline_left": 12,
+        "baseline_right": 12,
+        "baseline_label": "샘플 밸런스",
+        "baseline_note": "실시간 Google Trends 데이터를 불러오지 못하면 샘플 비교를 표시합니다.",
+        "source_label": "샘플 퀴즈",
+        "is_live": False,
     },
     {
         "id": "weekend_faceoff",
-        "title": "주말 무드 밸런스 게임",
-        "prompt": "집콕 정주행 vs 야외 산책",
+        "title": "주말 액티비티 밸런스 게임",
+        "prompt": "지금 더 관심이 몰린 활동 키워드는?",
         "left_label": "집콕 정주행",
         "right_label": "야외 산책",
-        "baseline_left": 47,
-        "baseline_right": 53,
+        "left_headline": "실시간 Google Trends 연결 전 기본 활동 대결입니다.",
+        "right_headline": "실시간 Google Trends 연결 전 기본 활동 대결입니다.",
+        "left_traffic": None,
+        "right_traffic": None,
+        "left_source_url": GOOGLE_TRENDS_RSS_URL.format(region="KR"),
+        "right_source_url": GOOGLE_TRENDS_RSS_URL.format(region="KR"),
+        "baseline_left": 12,
+        "baseline_right": 12,
+        "baseline_label": "샘플 밸런스",
+        "baseline_note": "실시간 Google Trends 데이터를 불러오지 못하면 샘플 비교를 표시합니다.",
+        "source_label": "샘플 퀴즈",
+        "is_live": False,
     },
 ]
 
@@ -710,20 +740,46 @@ def get_live_activity_catalog(region="KR", force_refresh=False):
 
 
 def _quiz_from_pair(quiz_id, title, prompt, left, right):
-    left_score = max(1, left.get("score", 50))
-    right_score = max(1, right.get("score", 50))
-    total = left_score + right_score
-    baseline_left = max(20, min(80, round((left_score / total) * 100)))
-    baseline_right = 100 - baseline_left
+    left_traffic = _normalize_traffic(left.get("traffic"))
+    right_traffic = _normalize_traffic(right.get("traffic"))
+    baseline_total = 24
+
+    if left_traffic or right_traffic:
+        total = max(1, left_traffic + right_traffic)
+        left_share = left_traffic / total
+        baseline_label = "Google Trends 검색량"
+        baseline_note = "초기 비율은 Google Trends 실시간 검색량을 축약 반영합니다."
+    else:
+        left_score = max(1, left.get("score", 50))
+        right_score = max(1, right.get("score", 50))
+        total = left_score + right_score
+        left_share = left_score / total
+        baseline_label = "Google Trends 트렌드 점수"
+        baseline_note = "검색량이 없으면 Google Trends 순위 점수를 기준으로 초기 비율을 잡습니다."
+
+    baseline_left = round(left_share * baseline_total)
+    baseline_left = max(1, min(baseline_total - 1, baseline_left))
+    baseline_right = baseline_total - baseline_left
+    is_live = left.get("source") == "google_trends_rss" and right.get("source") == "google_trends_rss"
+
     return {
         "id": quiz_id,
         "title": title,
         "prompt": prompt,
         "left_label": left.get("keyword") or left.get("name"),
         "right_label": right.get("keyword") or right.get("name"),
+        "left_headline": _crop_text(left.get("headline") or "실시간 Google Trends 키워드입니다."),
+        "right_headline": _crop_text(right.get("headline") or "실시간 Google Trends 키워드입니다."),
+        "left_traffic": left.get("traffic"),
+        "right_traffic": right.get("traffic"),
+        "left_source_url": _trend_source_url(left),
+        "right_source_url": _trend_source_url(right),
         "baseline_left": baseline_left,
         "baseline_right": baseline_right,
-        "source_label": "Google Trends 기반 실시간 대결",
+        "baseline_label": baseline_label,
+        "baseline_note": baseline_note,
+        "source_label": "Google Trends 실시간 대결" if is_live else "트렌드 캐시 기반 대결",
+        "is_live": is_live,
     }
 
 
@@ -778,12 +834,16 @@ def get_quiz_result(quiz_id, region="KR"):
     logs = list(get_collection("quiz_logs").find({"quiz_id": quiz_id}))
     left_votes = quiz["baseline_left"]
     right_votes = quiz["baseline_right"]
+    user_left_votes = 0
+    user_right_votes = 0
 
     for log in logs:
         if log["choice"] == "left":
             left_votes += 1
+            user_left_votes += 1
         else:
             right_votes += 1
+            user_right_votes += 1
 
     total = left_votes + right_votes
     left_rate = round((left_votes / total) * 100) if total else 50
@@ -797,19 +857,23 @@ def get_quiz_result(quiz_id, region="KR"):
         "right_votes": right_votes,
         "left_rate": left_rate,
         "right_rate": right_rate,
+        "user_left_votes": user_left_votes,
+        "user_right_votes": user_right_votes,
+        "user_votes_total": user_left_votes + user_right_votes,
+        "baseline_label": quiz.get("baseline_label"),
     }
 
 
-def build_quiz_board():
+def build_quiz_board(region="KR", force_refresh=False):
     board = []
-    for quiz in get_quiz_questions():
-        result = get_quiz_result(quiz["id"])
+    for quiz in get_quiz_questions(region=region, force_refresh=force_refresh):
+        result = get_quiz_result(quiz["id"], region=region)
         board.append({**quiz, "result": result})
     return board
 
 
-def record_quiz_vote(user_id, quiz_id, choice):
-    quiz = next((item for item in get_quiz_questions() if item["id"] == quiz_id), None)
+def record_quiz_vote(user_id, quiz_id, choice, region="KR"):
+    quiz = next((item for item in get_quiz_questions(region=region) if item["id"] == quiz_id), None)
     if not quiz:
         return None
 
@@ -823,4 +887,4 @@ def record_quiz_vote(user_id, quiz_id, choice):
             "created_at": datetime.utcnow(),
         }
     )
-    return get_quiz_result(quiz_id)
+    return get_quiz_result(quiz_id, region=region)

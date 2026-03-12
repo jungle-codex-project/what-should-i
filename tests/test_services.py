@@ -1,4 +1,5 @@
 import unittest
+from datetime import datetime
 from unittest.mock import patch
 
 from services.content_feedback import get_content_feedback_profile, save_content_feedback
@@ -12,7 +13,7 @@ from services.recommender import (
     recommend_fashion,
     recommend_food,
 )
-from services.trends import build_quiz_board, get_trends_by_category, record_quiz_vote
+from services.trends import build_quiz_board, get_quiz_questions, get_trends_by_category, record_quiz_vote
 from services.weather import get_weather_snapshot
 from db.mongo import get_collection
 from tests.test_support import TEST_APP, create_test_user, reset_database
@@ -327,6 +328,87 @@ class ServiceTests(unittest.TestCase):
         self.assertTrue(grouped["food"])
         self.assertTrue(grouped["content"])
 
+    def test_get_quiz_questions_uses_google_trends_traffic_for_baseline(self):
+        with self.app.app_context():
+            get_collection("trend_cache").update_one(
+                {"cache_key": "google_trends:KR"},
+                {
+                    "$set": {
+                        "cache_key": "google_trends:KR",
+                        "source": "hybrid_live_trends",
+                        "region": "KR",
+                        "generated_at": datetime.utcnow(),
+                        "is_live": True,
+                        "source_url": "https://trends.google.com/trending/rss?geo=KR",
+                        "google_url": "https://trends.google.com/trending/rss?geo=KR",
+                        "keywords": [
+                            {
+                                "keyword": "마라탕",
+                                "category": "food",
+                                "score": 70,
+                                "headline": "매운 음식 관심 상승",
+                                "traffic": "100,000+",
+                                "source": "google_trends_rss",
+                                "source_url": "https://example.com/malatang",
+                            },
+                            {
+                                "keyword": "탕후루",
+                                "category": "food",
+                                "score": 60,
+                                "headline": "디저트 검색 급증",
+                                "traffic": "300,000+",
+                                "source": "google_trends_rss",
+                                "source_url": "https://example.com/tanghulu",
+                            },
+                            {
+                                "keyword": "고프코어",
+                                "category": "fashion",
+                                "score": 80,
+                                "headline": "아웃도어 룩 강세",
+                                "traffic": "50,000+",
+                                "source": "google_trends_rss",
+                                "source_url": "https://example.com/gorpcore",
+                            },
+                            {
+                                "keyword": "미니멀룩",
+                                "category": "fashion",
+                                "score": 78,
+                                "headline": "정돈된 코디 재부상",
+                                "traffic": "40,000+",
+                                "source": "google_trends_rss",
+                                "source_url": "https://example.com/minimal",
+                            },
+                            {
+                                "keyword": "전시회",
+                                "category": "activity",
+                                "score": 77,
+                                "headline": "문화생활 검색 증가",
+                                "traffic": "90,000+",
+                                "source": "google_trends_rss",
+                                "source_url": "https://example.com/exhibition",
+                            },
+                            {
+                                "keyword": "러닝크루",
+                                "category": "activity",
+                                "score": 76,
+                                "headline": "야외 활동 관심 상승",
+                                "traffic": "30,000+",
+                                "source": "google_trends_rss",
+                                "source_url": "https://example.com/running",
+                            },
+                        ],
+                    }
+                },
+                upsert=True,
+            )
+
+            quiz = get_quiz_questions()[0]
+
+        self.assertEqual(quiz["left_traffic"], "100,000+")
+        self.assertEqual(quiz["right_traffic"], "300,000+")
+        self.assertEqual(quiz["source_label"], "Google Trends 실시간 대결")
+        self.assertLess(quiz["baseline_left"], quiz["baseline_right"])
+
     def test_record_quiz_vote_updates_result(self):
         with self.app.app_context():
             user = create_test_user()
@@ -335,6 +417,7 @@ class ServiceTests(unittest.TestCase):
 
         self.assertEqual(result["quiz_id"], quiz_id)
         self.assertGreaterEqual(result["left_votes"], 1)
+        self.assertEqual(result["user_votes_total"], 1)
 
 
 if __name__ == "__main__":

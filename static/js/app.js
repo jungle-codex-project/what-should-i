@@ -24,7 +24,8 @@ $(function () {
                         <div class="progress-bar bg-dark" role="progressbar" style="width: ${result.left_rate}%"></div>
                         <div class="progress-bar bg-warning" role="progressbar" style="width: ${result.right_rate}%"></div>
                     </div>
-                    <p class="text-muted small mt-3 mb-0">누적 투표 ${result.left_votes + result.right_votes}건</p>
+                    <p class="quiz-result-note mt-3 mb-1">${result.baseline_label} 기준 초기 비교 + 사용자 투표</p>
+                    <p class="text-muted small mb-0">사용자 누적 투표 ${result.user_votes_total}건</p>
                 `);
             })
             .fail(function () {

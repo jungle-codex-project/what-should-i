@@ -241,8 +241,10 @@ def trends():
 @recommendation_bp.route("/quiz")
 @login_required
 def quiz():
-    board = build_quiz_board()
-    return render_template("quiz.html", quiz_board=board)
+    region = current_app.config["DEFAULT_REGION"]
+    force_refresh = request.args.get("refresh") == "1"
+    board = build_quiz_board(region=region, force_refresh=force_refresh)
+    return render_template("quiz.html", quiz_board=board, trend_status=get_trend_status(region=region))
 
 
 @recommendation_bp.route("/quiz/vote", methods=["POST"])
@@ -254,7 +256,7 @@ def quiz_vote():
     if choice not in {"left", "right"}:
         return jsonify({"ok": False, "message": "유효하지 않은 선택입니다."}), 400
 
-    result = record_quiz_vote(session["user_id"], quiz_id, choice)
+    result = record_quiz_vote(session["user_id"], quiz_id, choice, region=current_app.config["DEFAULT_REGION"])
     if not result:
         return jsonify({"ok": False, "message": "퀴즈를 찾을 수 없습니다."}), 404
 
