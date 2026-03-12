@@ -4,15 +4,73 @@
 <section class="page-header-block">
     <span class="eyebrow">Fun Layer</span>
     <h1 class="display-6 fw-bold mt-2">VS 퀴즈</h1>
-    <p class="text-muted">재미 요소이지만 추천 UX를 방해하지 않도록 가볍게 배치했습니다. 선택 결과는 더미 베이스라인과 실제 로그를 합쳐 표시됩니다.</p>
+    <p class="text-muted">
+        {% if trend_status.is_live %}
+        Google Trends 실시간 급상승 검색어를 기준으로 카드가 구성됩니다. 초기 비율은 실제 검색량을 축약 반영하고, 사용자 투표가 계속 누적됩니다.
+        {% else %}
+        현재는 실시간 Google Trends 연결이 불안정해 캐시 또는 샘플 데이터를 함께 사용 중입니다.
+        {% endif %}
+    </p>
 </section>
+
+<div class="card-surface tone-mix mb-4">
+    <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
+        <div>
+            <span class="capsule-chip">{{ trend_status.source_label }}</span>
+            <h2 class="h4 mt-3 mb-2">퀴즈 데이터 상태</h2>
+            <p class="text-muted mb-0">
+                지역 {{ trend_status.region }}
+                ·
+                {% if trend_status.generated_at %}
+                {{ trend_status.generated_at.strftime('%Y-%m-%d %H:%M UTC') }}
+                {% else %}
+                캐시 준비 중
+                {% endif %}
+                ·
+                {% if trend_status.is_live %}
+                live
+                {% else %}
+                fallback
+                {% endif %}
+            </p>
+        </div>
+        <div class="align-self-lg-center d-flex flex-wrap gap-2">
+            <a href="{{ url_for('recommendations.quiz', refresh=1) }}" class="btn btn-outline-dark rounded-pill px-4">퀴즈 새로고침</a>
+            <a href="{{ trend_status.google_url }}" target="_blank" rel="noreferrer" class="btn btn-dark rounded-pill px-4">Google Trends</a>
+        </div>
+    </div>
+</div>
 
 <div class="row g-4">
     {% for quiz in quiz_board %}
     <div class="col-lg-4">
         <div class="card-surface quiz-card" data-quiz-card="{{ quiz.id }}">
-            <span class="capsule-chip">{{ quiz.title }}</span>
+            <div class="d-flex flex-wrap gap-2">
+                <span class="capsule-chip">{{ quiz.title }}</span>
+                <span class="capsule-chip">{{ quiz.source_label }}</span>
+            </div>
             <h2 class="h4 mt-3 mb-3">{{ quiz.prompt }}</h2>
+            <p class="text-muted small mb-3">{{ quiz.baseline_note }}</p>
+            <div class="quiz-source-grid mb-4">
+                <a class="quiz-source-card" href="{{ quiz.left_source_url }}" target="_blank" rel="noreferrer">
+                    <div class="quiz-source-head">
+                        <strong>{{ quiz.left_label }}</strong>
+                        {% if quiz.left_traffic %}
+                        <span class="capsule-chip">검색량 {{ quiz.left_traffic }}</span>
+                        {% endif %}
+                    </div>
+                    <p>{{ quiz.left_headline }}</p>
+                </a>
+                <a class="quiz-source-card" href="{{ quiz.right_source_url }}" target="_blank" rel="noreferrer">
+                    <div class="quiz-source-head">
+                        <strong>{{ quiz.right_label }}</strong>
+                        {% if quiz.right_traffic %}
+                        <span class="capsule-chip">검색량 {{ quiz.right_traffic }}</span>
+                        {% endif %}
+                    </div>
+                    <p>{{ quiz.right_headline }}</p>
+                </a>
+            </div>
             <div class="d-grid gap-2 mb-4">
                 <button class="btn btn-outline-dark rounded-pill quiz-vote-btn" data-quiz-id="{{ quiz.id }}" data-choice="left">{{ quiz.left_label }}</button>
                 <button class="btn btn-outline-dark rounded-pill quiz-vote-btn" data-quiz-id="{{ quiz.id }}" data-choice="right">{{ quiz.right_label }}</button>
@@ -26,7 +84,8 @@
                     <div class="progress-bar bg-dark" role="progressbar" style="width: {{ quiz.result.left_rate }}%"></div>
                     <div class="progress-bar bg-warning" role="progressbar" style="width: {{ quiz.result.right_rate }}%"></div>
                 </div>
-                <p class="text-muted small mt-3 mb-0">누적 투표 {{ quiz.result.left_votes + quiz.result.right_votes }}건</p>
+                <p class="quiz-result-note mt-3 mb-1">{{ quiz.result.baseline_label }} 기준 초기 비교 + 사용자 투표</p>
+                <p class="text-muted small mb-0">사용자 누적 투표 {{ quiz.result.user_votes_total }}건</p>
             </div>
         </div>
     </div>
